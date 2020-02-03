@@ -1,12 +1,14 @@
 from torchvision import transforms
 from utils import *
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+from matplotlib import pyplot as plt
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 # Load model checkpoint
 checkpoint = 'BEST_checkpoint_ssd300.pth.tar'
-checkpoint = torch.load(checkpoint)
+checkpoint = torch.load(checkpoint, map_location=torch.device('cpu'))
 start_epoch = checkpoint['epoch'] + 1
 best_loss = checkpoint['best_loss']
 print('\nLoaded checkpoint from epoch %d. Best loss so far is %.3f.\n' % (start_epoch, best_loss))
@@ -65,7 +67,6 @@ def detect(original_image, min_score, max_overlap, top_k, suppress=None):
     # Annotate
     annotated_image = original_image
     draw = ImageDraw.Draw(annotated_image)
-    font = ImageFont.truetype("./calibril.ttf", 15)
 
     # Suppress specific classes, if needed
     for i in range(det_boxes.size(0)):
@@ -84,13 +85,11 @@ def detect(original_image, min_score, max_overlap, top_k, suppress=None):
         #     det_labels[i]])  # a fourth rectangle at an offset of 1 pixel to increase line thickness
 
         # Text
-        text_size = font.getsize(det_labels[i].upper())
-        text_location = [box_location[0] + 2., box_location[1] - text_size[1]]
-        textbox_location = [box_location[0], box_location[1] - text_size[1], box_location[0] + text_size[0] + 4.,
+        text_location = [box_location[0] + 2., box_location[1]]
+        textbox_location = [box_location[0], box_location[1], box_location[0] + 4.,
                             box_location[1]]
         draw.rectangle(xy=textbox_location, fill=label_color_map[det_labels[i]])
-        draw.text(xy=text_location, text=det_labels[i].upper(), fill='white',
-                  font=font)
+        draw.text(xy=text_location, text=det_labels[i].upper(), fill='white')
     del draw
 
     return annotated_image
@@ -98,6 +97,9 @@ def detect(original_image, min_score, max_overlap, top_k, suppress=None):
 
 if __name__ == '__main__':
     img_path = '/media/ssd/ssd data/VOC2007/JPEGImages/000001.jpg'
+    img_path = 'image1.jpg'
     original_image = Image.open(img_path, mode='r')
     original_image = original_image.convert('RGB')
-    detect(original_image, min_score=0.2, max_overlap=0.5, top_k=200).show()
+    annotated_img = detect(original_image, min_score=0.2, max_overlap=0.5, top_k=200)
+    annotated_img.show()
+    plt.imsave(img_path + '_res.png', annotated_img)
